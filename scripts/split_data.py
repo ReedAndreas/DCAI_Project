@@ -12,11 +12,9 @@ TR = 2.0
 
 
 def split_nifti(input_file, output_file, start_time, end_time, tr):
-    # Load the NIfTI file
     img = nib.load(input_file)
     data = img.get_fdata()
 
-    # Calculate start and end volumes
     start_vol = int(start_time / tr)
     end_vol = int(end_time / tr)
 
@@ -26,7 +24,6 @@ def split_nifti(input_file, output_file, start_time, end_time, tr):
     # Create a new NIfTI image with the split data
     split_img = nib.Nifti1Image(split_data, img.affine, img.header)
 
-    # Save the new image
     nib.save(split_img, output_file)
     print(f"Split NIfTI saved: {output_file}")
 
