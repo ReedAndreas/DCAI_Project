@@ -5,9 +5,9 @@ import time
 import pickle
 
 # load in the data
-with open("../project_data/brains.pickle", "rb") as f:
+with open("project_data/brains.pickle", "rb") as f:
     new_brains = pickle.load(f)
-with open("../project_data/labels.pickle", "rb") as f:
+with open("project_data/labels.pickle", "rb") as f:
     labels = pickle.load(f)
 
 
@@ -36,6 +36,19 @@ class BrainDataset(Dataset):
 # Create dataset and dataloader
 train_dataset = BrainDataset(new_brains, labels)
 train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
+
+from monai.networks.nets import DenseNet121
+import torch.nn as nn
+
+model = DenseNet121(
+    spatial_dims=3,
+    in_channels=1,
+    out_channels=2,  # Adjust based on the number of classes
+).to("cuda" if torch.cuda.is_available() else "cpu")
+
+model.class_layers.out = nn.Linear(
+    in_features=model.class_layers.out.in_features, out_features=2
+)
 
 import torch.optim as optim
 import torch.nn.functional as F
