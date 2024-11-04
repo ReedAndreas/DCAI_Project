@@ -2,6 +2,7 @@ import numpy as np
 import scipy.io as sio
 import os
 import pickle
+import json
 from tqdm import tqdm
 
 
@@ -11,6 +12,9 @@ def create_pickles(mat_files_path, output_path):
 
     brains = []
     labels = []
+
+    with open('../mappings/level1_mapping.json', 'r') as f:
+        mapping = json.load(f)
 
     # Get all folders (1-180)
     folders = sorted(
@@ -53,7 +57,10 @@ def create_pickles(mat_files_path, output_path):
 
             # Create label (0 for even folders, 1 for odd folders)
             folder_num = int(folder)
-            label = 1 if folder_num % 2 else 0
+            label = mapping.get(str(folder_num), None)
+            if label is None:
+                print(f"WARNING: No label found for folder {folder_num}")
+                continue
             labels.append(label)
 
         except Exception as e:
