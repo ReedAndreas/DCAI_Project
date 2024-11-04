@@ -84,7 +84,7 @@ def create_pickles(mat_files_path, output_path):
 if __name__ == "__main__":
     # Set your paths here
     MAT_FILES_PATH = (
-        "project_data/mat_files"  # Path to the folder containing numbered folders
+        "project_data/mat_data"  # Path to the folder containing numbered folders
     )
     OUTPUT_PATH = "project_data"  # Path where pickle files will be saved
 
