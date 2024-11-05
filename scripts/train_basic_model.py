@@ -5,9 +5,9 @@ import time
 import pickle
 
 # load in the data
-with open("project_data/brains.pickle", "rb") as f:
+with open("brains.pickle", "rb") as f:
     new_brains = pickle.load(f)
-with open("project_data/labels.pickle", "rb") as f:
+with open("labels.pickle", "rb") as f:
     labels = pickle.load(f)
 
 
