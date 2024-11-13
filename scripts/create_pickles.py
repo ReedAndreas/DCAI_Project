@@ -52,34 +52,34 @@ def create_pickles(mat_files_path, output_path):
         # Convert S/NS to binary
         binary_label = 1 if label == "S" else 0
 
-        # Get the first (and should be only) mat file in the folder
+        # Get all mat files in the folder
         mat_files = [f for f in os.listdir(folder_path) if f.endswith(".mat")]
         if not mat_files:
             print(f"Warning: No MAT file found in folder {folder}")
             continue
 
-        mat_file = mat_files[0]
-        mat_path = os.path.join(folder_path, mat_file)
+        for mat_file in mat_files:
+            mat_path = os.path.join(folder_path, mat_file)
 
-        try:
-            # Load the MAT file
-            mat_data = sio.loadmat(mat_path)
+            try:
+                # Load the MAT file
+                mat_data = sio.loadmat(mat_path)
 
-            # Get the first key that contains the brain data
-            data_keys = [k for k in mat_data.keys() if not k.startswith("__")]
-            if not data_keys:
-                print(f"Warning: No valid data found in {mat_file}")
+                # Get the first key that contains the brain data
+                data_keys = [k for k in mat_data.keys() if not k.startswith("__")]
+                if not data_keys:
+                    print(f"Warning: No valid data found in {mat_file}")
+                    continue
+
+                brain_data = mat_data[data_keys[-1]]
+
+                # Add brain data and label to lists
+                brains.append(brain_data)
+                labels.append(binary_label)
+
+            except Exception as e:
+                print(f"Error processing {mat_file}: {str(e)}")
                 continue
-
-            brain_data = mat_data[data_keys[-1]]
-
-            # Add brain data and label to lists
-            brains.append(brain_data)
-            labels.append(binary_label)
-
-        except Exception as e:
-            print(f"Error processing {mat_file}: {str(e)}")
-            continue
 
     # Convert lists to numpy arrays
     brains = np.array(brains)
@@ -104,7 +104,7 @@ def create_pickles(mat_files_path, output_path):
 
 if __name__ == "__main__":
     # Set your paths here
-    MAT_FILES_PATH = "./mat_files"  # Path to the folder containing numbered folders
+    MAT_FILES_PATH = "./sub_mat_files"  # Path to the folder containing numbered folders
     OUTPUT_PATH = "./"  # Path where pickle files will be saved
 
     create_pickles(MAT_FILES_PATH, OUTPUT_PATH)
