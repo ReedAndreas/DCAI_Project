@@ -25,6 +25,9 @@ class HDF5Dataset(Dataset):
 
 # Use HDF5 dataset in DataLoader
 train_dataset = HDF5Dataset("brain_data.h5")
+train_dataset = torch.utils.data.Subset(
+    train_dataset, range(500)
+)  # Use first 500 samples
 train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
 
 from monai.networks.nets import DenseNet121
