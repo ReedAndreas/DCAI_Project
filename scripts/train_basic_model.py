@@ -1,40 +1,30 @@
-import numpy as np
-import pandas as pd
 from tqdm import tqdm
 import time
-import pickle
-
-# load in the data
-with open("brains.pickle", "rb") as f:
-    new_brains = pickle.load(f)
-with open("labels.pickle", "rb") as f:
-    labels = pickle.load(f)
-
-
+from torch.utils.data import Dataset, DataLoader
+import h5py
 import torch
-from torch.utils.data import DataLoader, Dataset
 
 
-# Custom dataset for 3D brain data
-class BrainDataset(Dataset):
-    def __init__(self, data, labels):
-        # Convert numpy arrays to torch tensors
-        self.data = [torch.from_numpy(arr).float() for arr in data]
-        self.labels = labels
+class HDF5Dataset(Dataset):
+    def __init__(self, h5_file_path):
+        self.h5_file = h5py.File(h5_file_path, "r")
+        self.brains = self.h5_file["brains"]
+        self.labels = self.h5_file["labels"]
 
     def __len__(self):
-        return len(self.data)
+        return len(self.labels)
 
     def __getitem__(self, idx):
-        image = self.data[idx]  # Already a tensor
-        label = self.labels[idx]
-        # Add channel dimension
-        image = image.unsqueeze(0)  # Shape: [1, depth, height, width]
-        return image, torch.tensor(label, dtype=torch.long)
+        brain = torch.tensor(self.brains[idx], dtype=torch.float32).unsqueeze(0)
+        label = torch.tensor(self.labels[idx], dtype=torch.long)
+        return brain, label
+
+    def __del__(self):
+        self.h5_file.close()
 
 
-# Create dataset and dataloader
-train_dataset = BrainDataset(new_brains, labels)
+# Use HDF5 dataset in DataLoader
+train_dataset = HDF5Dataset("brain_data.h5")
 train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
 
 from monai.networks.nets import DenseNet121
