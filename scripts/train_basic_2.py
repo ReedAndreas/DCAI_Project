@@ -1,8 +1,23 @@
 from tqdm import tqdm
 import time
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, random_split
 import h5py
 import torch
+
+import random
+import numpy as np
+import torch
+
+
+def set_random_seed(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)  # For multi-GPU
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False  # Disable auto-tuning for repeatability
 
 
 class HDF5Dataset(Dataset):
@@ -24,12 +39,17 @@ class HDF5Dataset(Dataset):
         self.h5_file.close()
 
 
-# Use HDF5 dataset in DataLoader
-train_dataset = HDF5Dataset("brain_data_1000.h5")
-train_dataset = torch.utils.data.Subset(
-    train_dataset, range(500)
-)  # Use first 500 samples
+# Load dataset
+full_dataset = HDF5Dataset("brain_data_1000.h5")
+
+# Split dataset into training and validation sets
+train_size = int(0.8 * len(full_dataset))  # 80% training
+val_size = len(full_dataset) - train_size  # 20% validation
+train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
+
+# Create DataLoaders
 train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False)
 
 from monai.networks.nets import DenseNet121
 import torch.nn as nn
@@ -77,7 +97,8 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
 
-def train_model(model, train_loader, criterion, optimizer, num_epochs=10):
+def train_model(model, train_loader, val_loader, criterion, optimizer, num_epochs=50):
+    set_random_seed(64)
     device = get_device()
     model.train()
 
@@ -90,12 +111,10 @@ def train_model(model, train_loader, criterion, optimizer, num_epochs=10):
         total = 0
 
         batch_pbar = tqdm(
-            train_loader, desc=f"Epoch {epoch+1}", leave=False, unit="batch", miniters=1
+            train_loader, desc=f"Epoch {epoch+1} [Train]", leave=False, unit="batch"
         )
 
         for i, (images, labels) in enumerate(batch_pbar):
-            batch_start_time = time.time()
-
             # Move data to device
             images, labels = images.to(device), labels.to(device)
 
@@ -105,58 +124,44 @@ def train_model(model, train_loader, criterion, optimizer, num_epochs=10):
             loss.backward()
             optimizer.step()
 
-            batch_time = time.time() - batch_start_time
-
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
-
             running_loss += loss.item()
-            current_loss = running_loss / (i + 1)
-            current_acc = 100 * correct / total
 
-            if not first_batch_done:
-                estimated_epoch_time = batch_time * len(train_loader)
-                print(f"\nEstimated time per epoch: {estimated_epoch_time:.2f} seconds")
-                print(
-                    f"Estimated total training time: {estimated_epoch_time * num_epochs:.2f} seconds"
-                )
-                first_batch_done = True
+        train_loss = running_loss / len(train_loader)
+        train_acc = 100 * correct / total
 
-            # Update memory usage display for MPS
-            memory_used = "N/A"
-            if torch.backends.mps.is_available():
-                # Note: MPS doesn't have direct memory reporting like CUDA
-                memory_used = "MPS Active"
-            elif torch.cuda.is_available():
-                memory_used = f"{torch.cuda.memory_allocated() / 1e9:.1f}GB"
+        # Validation
+        model.eval()
+        val_loss = 0.0
+        val_correct = 0
+        val_total = 0
 
-            batch_pbar.set_postfix(
-                {
-                    "loss": f"{current_loss:.4f}",
-                    "acc": f"{current_acc:.2f}%",
-                    "batch_time": f"{batch_time:.2f}s",
-                    "memory": memory_used,
-                }
-            )
+        with torch.no_grad():
+            for images, labels in val_loader:
+                images, labels = images.to(device), labels.to(device)
 
-            if (i + 1) % 10 == 0:
-                print(
-                    f"\nBatch {i+1}/{len(train_loader)}: "
-                    f"Loss: {current_loss:.4f}, "
-                    f"Accuracy: {current_acc:.2f}%, "
-                    f"Time/batch: {batch_time:.2f}s"
-                )
+                outputs = model(images)
+                loss = criterion(outputs, labels)
+                val_loss += loss.item()
 
-        epoch_pbar.set_postfix(
-            {"loss": f"{current_loss:.4f}", "acc": f"{current_acc:.2f}%"}
-        )
+                _, predicted = torch.max(outputs.data, 1)
+                val_total += labels.size(0)
+                val_correct += (predicted == labels).sum().item()
+
+        val_loss /= len(val_loader)
+        val_acc = 100 * val_correct / val_total
 
         print(f"\nEpoch {epoch+1}/{num_epochs}")
-        print(f"Average Loss: {current_loss:.4f}")
-        print(f"Accuracy: {current_acc:.2f}%")
+        print(f"Train Loss: {train_loss:.4f}, Train Accuracy: {train_acc:.2f}%")
+        print(f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_acc:.2f}%")
         print("-" * 50)
+
+        epoch_pbar.set_postfix(
+            {"train_loss": train_loss, "val_loss": val_loss, "val_acc": val_acc}
+        )
 
 
 # Train the model
-train_model(model, train_loader, criterion, optimizer, num_epochs=10)
+train_model(model, train_loader, val_loader, criterion, optimizer, num_epochs=50)
