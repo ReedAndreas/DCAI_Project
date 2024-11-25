@@ -27,21 +27,24 @@ def get_label_for_file(file_path, folder_to_activity, activity_labels):
     """Get binary label for a file based on its folder."""
     folder_num = str(Path(file_path).parent.name)
 
-    activity_name = folder_to_activity.get(folder_num)
-    if activity_name is None:
-        print(
-            f"Warning: No activity mapping found for folder {folder_num} (file: {file_path})"
-        )
-        return None
+    # activity_name = folder_to_activity.get(folder_num)
+    # print(folder_num)
 
-    label = activity_labels.get(activity_name)
-    if label is None:
-        print(
-            f"Warning: No label found for activity {activity_name} (folder: {folder_num})"
-        )
-        return None
+    return folder_num
+    # if activity_name is None:
+    #     print(
+    #         f"Warning: No activity mapping found for folder {folder_num} (file: {file_path})"
+    #     )
+    #     return None
 
-    return 1 if label == "S" else 0
+    # label = activity_labels.get(activity_name)
+    # if label is None:
+    #     print(
+    #         f"Warning: No label found for activity {activity_name} (folder: {folder_num})"
+    #     )
+    #     return None
+
+    # return 1 if label == "S" else 0
 
 
 def take_difference():
@@ -51,9 +54,18 @@ def take_difference():
 def normalize_brain(brain_data, non_zero_mean, non_zero_std):
     """Normalize brain data using scaled Tanh transformation."""
     brain = torch.tensor(brain_data, dtype=torch.float32)
-    diff = abs(brain[:,0] - brain[:,1])
-    
-    return diff
+    # diff = abs(brain[:,0] - brain[:,1])
+    avg = (brain[:,0] + brain[:,1]) / 2
+    sorted_list = sorted(avg)
+    # print(avg)
+    # print(sorted_list)
+    # print(sorted)
+    # print("HULLO", int(0.9*len(avg)))
+    threshold_idx = int(0.9*len(sorted_list)) - 1
+    threshold = sorted_list[threshold_idx]
+    threshold_these = np.where(avg <= threshold)
+    avg[threshold_these] = 0
+    return avg
 
     # # ZK may just be able to return brain
     # # need to take the difference though
@@ -146,8 +158,10 @@ def process_files(
         count += 1
 
     # Convert to numpy arrays
+    labels = [int(l) for l in labels]
     brains = np.array(brains)
     labels = np.array(labels)
+    
 
     print(f"\nProcessed data shape: {brains.shape}")
     print(f"Labels shape: {labels.shape}")
@@ -171,6 +185,7 @@ if __name__ == "__main__":
    # )
    process_files(
        mat_files_path="/Users/zacharykaras/Desktop/parcel_vectors/",
-       output_path="/Users/zacharykaras/Desktop/brain_data_all.h5"
+    #    output_path="/Users/zacharykaras/Desktop/brain_data_all.h5"
+        output_path="/Users/zacharykaras/Desktop/brain_data_all_thresholded.h5"
     )
 
