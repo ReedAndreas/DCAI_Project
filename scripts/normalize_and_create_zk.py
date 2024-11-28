@@ -54,18 +54,19 @@ def take_difference():
 def normalize_brain(brain_data, non_zero_mean, non_zero_std):
     """Normalize brain data using scaled Tanh transformation."""
     brain = torch.tensor(brain_data, dtype=torch.float32)
-    # diff = abs(brain[:,0] - brain[:,1])
-    avg = (brain[:,0] + brain[:,1]) / 2
-    sorted_list = sorted(avg)
-    # print(avg)
-    # print(sorted_list)
-    # print(sorted)
-    # print("HULLO", int(0.9*len(avg)))
-    threshold_idx = int(0.9*len(sorted_list)) - 1
-    threshold = sorted_list[threshold_idx]
-    threshold_these = np.where(avg <= threshold)
-    avg[threshold_these] = 0
-    return avg
+    diff = abs(brain[:,0] - brain[:,1])
+    return diff
+    # avg = (brain[:,0] + brain[:,1]) / 2
+    # sorted_list = sorted(avg)
+    # # print(avg)
+    # # print(sorted_list)
+    # # print(sorted)
+    # # print("HULLO", int(0.9*len(avg)))
+    # threshold_idx = int(0.9*len(sorted_list)) - 1
+    # threshold = sorted_list[threshold_idx]
+    # threshold_these = np.where(avg <= threshold)
+    # avg[threshold_these] = 0
+    # return avg
 
     # # ZK may just be able to return brain
     # # need to take the difference though
@@ -186,6 +187,6 @@ if __name__ == "__main__":
    process_files(
        mat_files_path="/Users/zacharykaras/Desktop/parcel_vectors/",
     #    output_path="/Users/zacharykaras/Desktop/brain_data_all.h5"
-        output_path="/Users/zacharykaras/Desktop/brain_data_all_thresholded.h5"
+        output_path="/Users/zacharykaras/Desktop/brain_data_all_labels_diff.h5"
     )
 
